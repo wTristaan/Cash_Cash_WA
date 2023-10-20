@@ -1,6 +1,6 @@
 # Cash Cash - Détecteur de Monnaie en Temps Réel
 
-![Logo de Cash Cash](assets/logo/logo.png)
+![Logo de Cash Cash](assets/logo/rounded_white_logo.png)
 
 ## Description
 
