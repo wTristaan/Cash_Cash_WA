@@ -1,9 +1,11 @@
 // ignore_for_file: avoid_print
-import 'package:flutter/material.dart';
 import 'package:camera/camera.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:fluttertoast/fluttertoast.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:permission_handler/permission_handler.dart';
+
 import '../main.dart';
 import 'image.dart';
 
@@ -14,35 +16,34 @@ class OpenCamera extends StatefulWidget {
 }
 
 class _OpenCameraState extends State<OpenCamera> with WidgetsBindingObserver {
+  late bool camsPermissionIsGranted = false;
+  late bool isCams = false;
   late CameraController? _controller;
-  late bool initialized = false;
+  late IconData _flashIcon = Icons.flash_off;
+  bool _isFlashOn = false;
 
   @override
   void initState() {
     super.initState();
-    SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
+    SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
+    SystemChrome.setSystemUIOverlayStyle(const SystemUiOverlayStyle(
+      statusBarColor: Colors.transparent,
+      statusBarIconBrightness: Brightness.light,
+    ));
     WidgetsBinding.instance.addObserver(this);
     _requestCameraPermission();
   }
 
   @override
-  void didChangeAppLifecycleState(AppLifecycleState state) {
-    if(initialized){
+  Future<void> didChangeAppLifecycleState(AppLifecycleState state) async {
+    var status = await Permission.camera.status;
+    if(status.isGranted){
       if (state == AppLifecycleState.inactive) {
         _controller!.dispose();
       } else if (state == AppLifecycleState.resumed) {
         _initializeCamera();
       }
     }
-  }
-
-
-  @override
-  void dispose() {
-    _controller!.dispose();
-    SystemChrome.setEnabledSystemUIMode(SystemUiMode.manual, overlays: SystemUiOverlay.values);
-    WidgetsBinding.instance.removeObserver(this);
-    super.dispose();
   }
 
   Future<void> _initializeCamera() async {
@@ -54,51 +55,28 @@ class _OpenCameraState extends State<OpenCamera> with WidgetsBindingObserver {
         break;
       }
     }
+
     if (selectedCamera == null) {
       throw 'No camera detected';
-    }
-    _controller = CameraController(
-      selectedCamera,
-      ResolutionPreset.ultraHigh,
-      enableAudio: false,
-    );
+    }else{
+      _controller = CameraController(
+        selectedCamera,
+        ResolutionPreset.veryHigh,
+        enableAudio: false,
+      );
 
-    await _controller!.initialize();
+      await _controller!.initialize();
+      await _controller!.setFlashMode(FlashMode.off);
 
-    if (!mounted) {
-      return;
-    }
-
-    setState(() {
-      initialized = true;
-    });
-  }
-
-  Future<void> _openGallery() async {
-    var status = await Permission.storage.status;
-    if (!status.isGranted) {
-      status = await Permission.storage.request();
-    }
-    if (status.isGranted) {
-      final picker = ImagePicker();
-      final pickedFile = await picker.pickImage(source: ImageSource.gallery);
-      if (pickedFile != null) {
-        print('Image selected: ${pickedFile.path}');
-        goToPreview(pickedFile);
-      } else {
-        print('No image selected.');
+      if (!mounted) {
+        return;
       }
-    } else {
-      print('Permission denied');
-    }
-  }
 
-  goToPreview(image) {
-    navigatorKey.currentState?.push(
-      MaterialPageRoute(
-        builder: (context) => ImageViewer(imagePath: image.path),
-      ),
-    );
+      setState(() {
+        camsPermissionIsGranted = true;
+        isCams = true;
+      });
+    }
   }
 
   Future<void> _requestCameraPermission() async {
@@ -110,76 +88,162 @@ class _OpenCameraState extends State<OpenCamera> with WidgetsBindingObserver {
     if (status.isGranted) {
       _initializeCamera();
     } else {
-      print('Permission Denied');
+      setState(() {
+        camsPermissionIsGranted = false;
+        isCams = false;
+      });
+    }
+  }
+
+  Future<void> _openGallery() async {
+    var status = await Permission.storage.status;
+    if (!status.isGranted) {
+      status = await Permission.storage.request();
+    }
+    if (status.isGranted) {
+      final picker = ImagePicker();
+      final pickedFile = await picker.pickImage(source: ImageSource.gallery);
+      if (pickedFile != null) {
+        goToPreview(pickedFile);
+      }else{
+        Fluttertoast.showToast(
+            msg: "L'image n'a pas pu être chargée",
+            toastLength: Toast.LENGTH_LONG,
+            gravity: ToastGravity.TOP,
+            timeInSecForIosWeb: 4,
+            backgroundColor: Colors.green,
+            textColor: Colors.white,
+            fontSize: 16.0
+        );
+      }
+    }
+  }
+
+  goToPreview(image) async {
+    _toggleFlash();
+    navigatorKey.currentState?.push(
+      MaterialPageRoute(
+        builder: (context) => ImageViewer(imagePath: image.path),
+      ),
+    );
+  }
+
+  void _toggleFlash() async {
+    if (_controller != null) {
+      setState(() {
+        _isFlashOn = !_isFlashOn;
+        _flashIcon = _isFlashOn ? Icons.flash_on : Icons.flash_off;
+      });
+      await _controller!.setFlashMode(_isFlashOn ? FlashMode.torch : FlashMode.off);
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    final size = MediaQuery.of(context).size;
     return Scaffold(
+      backgroundColor: Colors.transparent,
       resizeToAvoidBottomInset: false,
       body: SafeArea(
-        child: initialized
-            ? Stack(
-          alignment: Alignment.center,
+        child: Stack(
           children: [
-            SizedBox(
-              width: size.width,
-              height: size.height,
-              child: OverflowBox(
-                alignment: Alignment.center,
-                maxHeight: size.height,
-                maxWidth: size.height * _controller!.value.aspectRatio,
-                child: CameraPreview(_controller!),
+            _fullScreenBlackBackground(),
+            if (camsPermissionIsGranted && isCams) ...[
+              _cameraPreviewWidget(), // La prévisualisation de la caméra
+              _cameraIconWidget(),    // L'icône de l'appareil photo
+              _galleryIconWidget(),   // L'icône de la galerie
+              _flashIconWidget(),     // L'icône du flash
+            ] else if (!camsPermissionIsGranted && !isCams) ...[
+              _cameraIconWidget(),    // L'icône de l'appareil photo
+              _galleryIconWidget(),   // L'icône de la galerie
+            ] else ...[
+              const Center(
+                child: CircularProgressIndicator(),
               ),
-            ),
-            Positioned(
-              bottom: 20.0,
-              child: GestureDetector(
-                onTap: () async {
-                  try {
-                    final image = await _controller!.takePicture();
-                    goToPreview(image);
-                  } catch (e) {
-                    print('Error taking picture: $e');
-                  }
-                },
-                child: SizedBox(
-                  width: 80.0,
-                  height: 80.0,
-                  child: Center(
-                    child: Image.asset(
-                      'assets/photo.png',
-                      width: 80.0,
-                      height: 80.0,
-                    ),
-                  ),
-                ),
-              ),
-            ),
-            Positioned(
-              bottom: 40.0,
-              right: 90.0,
-              child: GestureDetector(
-                onTap: _openGallery,
-                child: Center(
-                  child: Image.asset(
-                    'assets/gallery.png',
-                    width: 30.0,
-                    height: 30.0,
-                  ),
-                ),
-              ),
-            ),
+            ],
           ],
-        )
-            : const Center(child: CircularProgressIndicator()),
+        ),
+      ),
+    );
+  }
+
+  Widget _cameraPreviewWidget() {
+    final size = MediaQuery.of(context).size;
+    return SizedBox(
+      width: size.width,
+      height: size.height,
+      child: OverflowBox(
+        alignment: Alignment.center,
+        maxHeight: size.height,
+        maxWidth: _controller != null && _controller!.value.isInitialized
+            ? size.height * _controller!.value.aspectRatio
+            : size.width,
+        child: CameraPreview(_controller!),
+      ),
+    );
+  }
+
+  Widget _fullScreenBlackBackground() {
+    return Container(color: Colors.black);
+  }
+
+  Widget _cameraIconWidget() {
+    return Align(
+      alignment: Alignment.bottomCenter,
+      child: GestureDetector(
+        onTap: () async {
+          if (!camsPermissionIsGranted && !isCams) {
+            openAppSettings();
+          }else{
+            try {
+              final image = await _controller!.takePicture();
+              goToPreview(image);
+            } catch (e) {
+              print('Error taking picture: $e');
+            }
+          }
+        },
+        child: Padding(
+          padding: const EdgeInsets.only(bottom: 20.0),
+          child: Image.asset(
+            'assets/photo.png',
+            width: 80.0,
+            height: 80.0,
+          ),
+        ),
+      ),
+    );
+  }
+
+
+  Widget _galleryIconWidget() {
+    return Positioned(
+      bottom: 40.0,
+      right: 90.0,
+      child: GestureDetector(
+        onTap: () {
+          _openGallery();
+        },
+        child: Image.asset(
+          'assets/gallery.png',
+          width: 30.0,
+          height: 30.0,
+        ),
+      ),
+    );
+  }
+
+  Widget _flashIconWidget() {
+    return Positioned(
+      top: 30.0,
+      left: 30.0,
+      child: GestureDetector(
+        onTap: _toggleFlash,
+        child: Icon(
+          _flashIcon,
+          color: _isFlashOn ? Colors.yellow : Colors.grey,
+          size: 30.0,
+        ),
       ),
     );
   }
 }
-
-
-
-

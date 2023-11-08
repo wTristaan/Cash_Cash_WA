@@ -3,6 +3,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../main.dart';
 import '../window/image.dart';
+import 'package:fluttertoast/fluttertoast.dart';
+
 
 class ConfirmDialog extends StatelessWidget {
   final String imagePath;

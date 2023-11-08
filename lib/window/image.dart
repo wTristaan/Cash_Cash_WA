@@ -7,8 +7,8 @@ import 'package:mime/mime.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../main.dart';
 import '../utils/dialog.dart';
-import '../utils/painter.dart';
 import 'package:http_parser/http_parser.dart';
+import 'package:fluttertoast/fluttertoast.dart';
 
 Future<void> uploadImage(String imagePath) async {
   var uri = Uri.parse('http://149.202.49.224:8000/uploadfile/');
@@ -16,24 +16,61 @@ Future<void> uploadImage(String imagePath) async {
 
   var mimeType = lookupMimeType(imagePath);
   if (mimeType == null) {
-    print('Cannot determine MIME type for the image.');
+    Fluttertoast.showToast(
+        msg: "Erreur : Lors de l'envoi de l'image",
+        toastLength: Toast.LENGTH_LONG,
+        gravity: ToastGravity.BOTTOM,
+        timeInSecForIosWeb: 4,
+        backgroundColor: Colors.red,
+        textColor: Colors.white,
+        fontSize: 16.0
+    );
     return;
   }
 
-  var file = await http.MultipartFile.fromPath('file', imagePath, contentType: MediaType.parse(mimeType));
+  var file = await http.MultipartFile.fromPath(
+    'file',
+    imagePath,
+    contentType: MediaType.parse(mimeType),
+  );
   request.files.add(file);
 
   try {
     var response = await request.send();
     if (response.statusCode == 200) {
-      print('Image uploaded successfully');
+      Fluttertoast.showToast(
+          msg: "L'image à bien été envoyée à notre serveur",
+          toastLength: Toast.LENGTH_LONG,
+          gravity: ToastGravity.TOP,
+          timeInSecForIosWeb: 4,
+          backgroundColor: Colors.green,
+          textColor: Colors.white,
+          fontSize: 16.0
+      );
+
     } else {
-      print('Failed to upload image. Status code: ${response.statusCode}');
+      Fluttertoast.showToast(
+        msg: 'Erreur : ${response.statusCode}',
+        toastLength: Toast.LENGTH_LONG,
+        gravity: ToastGravity.BOTTOM,
+        timeInSecForIosWeb: 4,
+        backgroundColor: Colors.red,
+        textColor: Colors.white,
+        fontSize: 16.0
+      );
     }
   } catch (e) {
-    print('Error uploading image: $e');
+    Fluttertoast.showToast(
+        msg: "Erreur lors de l'envoi de l'image : $e",
+        toastLength: Toast.LENGTH_LONG,
+        gravity: ToastGravity.BOTTOM,
+        timeInSecForIosWeb: 4,
+        backgroundColor: Colors.red,
+        textColor: Colors.white,
+        fontSize: 16.0);
   }
 }
+
 
 class ImageViewer extends StatelessWidget {
   final String imagePath;
@@ -140,77 +177,102 @@ class ImageDetailsPage extends StatefulWidget {
 
 class _ImageDetailsPageState extends State<ImageDetailsPage> with SingleTickerProviderStateMixin {
   late AnimationController _animationController;
-  late Animation<double> _animation;
+  late DraggableScrollableController controller;
+  bool sheetIsExpanded = false;
+
 
   @override
   void initState() {
     super.initState();
-    _animationController = AnimationController(
-      duration: const Duration(milliseconds: 250),
-      vsync: this,
-    )..repeat(reverse: true);
-    _animation = Tween<double>(begin: 0, end: 10).animate(_animationController)
-      ..addListener(() {
-        setState(() {});
-      });
+    controller = DraggableScrollableController();
+
   }
 
   @override
   void dispose() {
     _animationController.dispose();
+    controller.dispose();
     super.dispose();
+  }
+
+  void _toggleSheet() {
+    final double targetSize = sheetIsExpanded ? 0.1 : 1.0;
+    controller.animateTo(
+      targetSize,
+      duration: const Duration(milliseconds: 300),
+      curve: Curves.easeInOut,
+    );
+    sheetIsExpanded = !sheetIsExpanded;
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: SingleChildScrollView(
-        child: Column(
-          children: [
-            Stack(
-              alignment: Alignment.bottomCenter,
-              children: [
-                Image.file(
-                  File(widget.imagePath),
-                  fit: BoxFit.contain,
-                  width: double.infinity,
-                  height: MediaQuery.of(context).size.height,
-                ),
-                Padding(
-                  padding: EdgeInsets.only(bottom: _animation.value + 10),
-                  child: const ArrowIcon(),
-                ),
-              ],
+      backgroundColor: Colors.black,
+      body: Stack(
+        children: [
+          Positioned.fill(
+            child: Image.file(
+              File(widget.imagePath),
+              fit: BoxFit.contain,
             ),
-            Container(
-              padding: const EdgeInsets.all(16.0),
-              child: const Column(
-                children: [
-                  ListTile(
-                    leading: Icon(Icons.attach_money),
-                    title: Text('Nombre de pièces'),
-                    subtitle: Text('Somme: \$XXX.XX'),
+          ),
+          Positioned.fill(
+            child: DraggableScrollableSheet(
+              controller: controller,
+              initialChildSize: 0.1,
+              minChildSize: 0.1,
+              maxChildSize: 1,
+              builder: (BuildContext context, ScrollController scrollController) {
+                return GestureDetector(
+                  onTap: _toggleSheet,
+                  child: Container(
+                    decoration: const BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.only(
+                        topLeft: Radius.circular(30.0),
+                        topRight: Radius.circular(30.0),
+                      ),
+                    ),
+                    child: ListView(
+                      controller: scrollController,
+                      children: [
+                        Transform.translate(
+                          offset: const Offset(0, -20), // Déplacez le ListTile vers le haut de 10 pixels
+                          child: const ListTile(
+                            contentPadding: EdgeInsets.symmetric(vertical: 4.0, horizontal: 15.0),
+                            leading: Icon(Icons.info),
+                            title: Text('Détails'),
+                          ),
+                        ),
+                        const ListTile(
+                          leading: Icon(Icons.attach_money),
+                          title: Text('Nombre de pièces'),
+                          subtitle: Text('Somme: \$XXX.XX'),
+                        ),
+                        const ListTile(
+                          leading: Icon(Icons.money_off),
+                          title: Text('Nombre de billets'),
+                          subtitle: Text('Somme: \$XXX.XX'),
+                        ),
+                        const ListTile(
+                          leading: Icon(Icons.check),
+                          title: Text('Nombre de chèques'),
+                          subtitle: Text('Somme: \$XXX.XX'),
+                        ),
+                        const ListTile(
+                          leading: Icon(Icons.receipt),
+                          title: Text('Nombre de tickets de caisse'),
+                          subtitle: Text('Somme: \$XXX.XX'),
+                        ),
+                      ],
+                    ),
                   ),
-                  ListTile(
-                    leading: Icon(Icons.money_off),
-                    title: Text('Nombre de billets'),
-                    subtitle: Text('Somme: \$XXX.XX'),
-                  ),
-                  ListTile(
-                    leading: Icon(Icons.check),
-                    title: Text('Nombre de chèques'),
-                    subtitle: Text('Somme: \$XXX.XX'),
-                  ),
-                  ListTile(
-                    leading: Icon(Icons.receipt),
-                    title: Text('Nombre de tickets de caisse'),
-                    subtitle: Text('Somme: \$XXX.XX'),
-                  ),
-                ],
-              ),
+                );
+              },
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }

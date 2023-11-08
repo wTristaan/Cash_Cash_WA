@@ -45,5 +45,12 @@
 	<true/>
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
+	<key>NSCameraUsageDescription</key>
+    <string>Votre caméra sera utilisée pour la détection des monnaies</string>
+    <key>NSMicrophoneUsageDescription</key>
+    <string>Le microphone ne sera jamais enregistré</string>
+    <key>NSPhotoLibraryUsageDescription</key>
+    <string>Utilisation de votre gallerie pour importer vos photos</string>
+
 </dict>
 </plist>

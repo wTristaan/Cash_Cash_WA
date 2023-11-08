@@ -35,6 +35,7 @@ dependencies:
   http: ^1.1.0
   mime: ^1.0.4
   shared_preferences: ^2.2.2
+  fluttertoast: ^8.2.2
   flutter:
     sdk: flutter
 
@@ -69,6 +70,7 @@ flutter:
   assets:
     - assets/photo.png
     - assets/gallery.png
+    - assets/bg.jpg
   #   - images/a_dot_ham.jpeg
 
   # An image asset can refer to one or more resolution-specific "variants", see
