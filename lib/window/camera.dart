@@ -25,9 +25,8 @@ class _OpenCameraState extends State<OpenCamera> with WidgetsBindingObserver {
   @override
   void initState() {
     super.initState();
-    SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
     SystemChrome.setSystemUIOverlayStyle(const SystemUiOverlayStyle(
-      statusBarColor: Colors.transparent,
+      statusBarColor: Colors.black,
       statusBarIconBrightness: Brightness.light,
     ));
     WidgetsBinding.instance.addObserver(this);
@@ -96,7 +95,7 @@ class _OpenCameraState extends State<OpenCamera> with WidgetsBindingObserver {
   }
 
   Future<void> _openGallery() async {
-    var status = await Permission.storage.status;
+    var status = await Permission.photos.request();
     if (!status.isGranted) {
       status = await Permission.storage.request();
     }
@@ -107,11 +106,11 @@ class _OpenCameraState extends State<OpenCamera> with WidgetsBindingObserver {
         goToPreview(pickedFile);
       }else{
         Fluttertoast.showToast(
-            msg: "L'image n'a pas pu être chargée",
+            msg: "Aucune image chargée",
             toastLength: Toast.LENGTH_LONG,
             gravity: ToastGravity.TOP,
             timeInSecForIosWeb: 4,
-            backgroundColor: Colors.green,
+            backgroundColor: Colors.red,
             textColor: Colors.white,
             fontSize: 16.0
         );
@@ -120,7 +119,6 @@ class _OpenCameraState extends State<OpenCamera> with WidgetsBindingObserver {
   }
 
   goToPreview(image) async {
-    _toggleFlash();
     navigatorKey.currentState?.push(
       MaterialPageRoute(
         builder: (context) => ImageViewer(imagePath: image.path),
@@ -140,26 +138,38 @@ class _OpenCameraState extends State<OpenCamera> with WidgetsBindingObserver {
 
   @override
   Widget build(BuildContext context) {
+    final statusBarHeight = MediaQuery.of(context).padding.top;
     return Scaffold(
-      backgroundColor: Colors.transparent,
+      backgroundColor: Colors.black,
       resizeToAvoidBottomInset: false,
       body: SafeArea(
-        child: Stack(
+        child: Column(
           children: [
-            _fullScreenBlackBackground(),
-            if (camsPermissionIsGranted && isCams) ...[
-              _cameraPreviewWidget(), // La prévisualisation de la caméra
-              _cameraIconWidget(),    // L'icône de l'appareil photo
-              _galleryIconWidget(),   // L'icône de la galerie
-              _flashIconWidget(),     // L'icône du flash
-            ] else if (!camsPermissionIsGranted && !isCams) ...[
-              _cameraIconWidget(),    // L'icône de l'appareil photo
-              _galleryIconWidget(),   // L'icône de la galerie
-            ] else ...[
-              const Center(
-                child: CircularProgressIndicator(),
+            Container(
+              width: double.infinity,
+              height: statusBarHeight + 20,
+              color: Colors.black,
+            ),
+            Expanded(
+              child: Stack(
+                children: [
+                  _fullScreenBlackBackground(),
+                  if (camsPermissionIsGranted && isCams) ...[
+                    _cameraPreviewWidget(), // La prévisualisation de la caméra
+                    _cameraIconWidget(),    // L'icône de l'appareil photo
+                    _galleryIconWidget(),   // L'icône de la galerie
+                    _flashIconWidget(),     // L'icône du flash
+                  ] else if (!camsPermissionIsGranted && !isCams) ...[
+                    _cameraIconWidget(),    // L'icône de l'appareil photo
+                    _galleryIconWidget(),   // L'icône de la galerie
+                  ] else ...[
+                    const Center(
+                      child: CircularProgressIndicator(),
+                    ),
+                  ],
+                ],
               ),
-            ],
+            ),
           ],
         ),
       ),
@@ -195,6 +205,13 @@ class _OpenCameraState extends State<OpenCamera> with WidgetsBindingObserver {
             openAppSettings();
           }else{
             try {
+              if (_controller != null) {
+                setState(() {
+                  _isFlashOn = false;
+                  _flashIcon = Icons.flash_off;
+                });
+                await _controller!.setFlashMode(FlashMode.off);
+              }
               final image = await _controller!.takePicture();
               goToPreview(image);
             } catch (e) {
@@ -234,7 +251,7 @@ class _OpenCameraState extends State<OpenCamera> with WidgetsBindingObserver {
 
   Widget _flashIconWidget() {
     return Positioned(
-      top: 30.0,
+      top: 0,
       left: 30.0,
       child: GestureDetector(
         onTap: _toggleFlash,

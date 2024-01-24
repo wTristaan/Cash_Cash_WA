@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'dart:io';
@@ -10,7 +11,7 @@ import '../utils/dialog.dart';
 import 'package:http_parser/http_parser.dart';
 import 'package:fluttertoast/fluttertoast.dart';
 
-Future<void> uploadImage(String imagePath) async {
+dynamic uploadImage(String imagePath) async {
   var uri = Uri.parse('http://149.202.49.224:8000/uploadfile/');
   var request = http.MultipartRequest('POST', uri);
 
@@ -47,16 +48,18 @@ Future<void> uploadImage(String imagePath) async {
           textColor: Colors.white,
           fontSize: 16.0
       );
-
+      var responseData = await http.Response.fromStream(response);
+      var dataDict = json.decode(responseData.body);
+      return dataDict;
     } else {
       Fluttertoast.showToast(
-        msg: 'Erreur : ${response.statusCode}',
-        toastLength: Toast.LENGTH_LONG,
-        gravity: ToastGravity.BOTTOM,
-        timeInSecForIosWeb: 4,
-        backgroundColor: Colors.red,
-        textColor: Colors.white,
-        fontSize: 16.0
+          msg: 'Erreur : ${response.statusCode}',
+          toastLength: Toast.LENGTH_LONG,
+          gravity: ToastGravity.BOTTOM,
+          timeInSecForIosWeb: 4,
+          backgroundColor: Colors.red,
+          textColor: Colors.white,
+          fontSize: 16.0
       );
     }
   } catch (e) {
@@ -71,10 +74,17 @@ Future<void> uploadImage(String imagePath) async {
   }
 }
 
-
-class ImageViewer extends StatelessWidget {
+class ImageViewer extends StatefulWidget {
   final String imagePath;
+
   const ImageViewer({super.key, required this.imagePath});
+
+  @override
+  State<ImageViewer> createState() => _ImageViewerState();
+}
+
+class _ImageViewerState extends State<ImageViewer> {
+  bool isUploading = false;
 
   Future<ImageInfo> _loadImage(String imagePath) async {
     final Completer<ImageInfo> completer = Completer();
@@ -86,14 +96,83 @@ class ImageViewer extends StatelessWidget {
     return completer.future;
   }
 
+  dynamic uploadImage(String imagePath) async {
+    setState(() {
+      isUploading = true;
+    });
+    var uri = Uri.parse('http://149.202.49.224:8000/uploadfile/');
+    var request = http.MultipartRequest('POST', uri);
+
+    var mimeType = lookupMimeType(imagePath);
+    if (mimeType == null) {
+      Fluttertoast.showToast(
+          msg: "Erreur : Lors de l'envoi de l'image",
+          toastLength: Toast.LENGTH_LONG,
+          gravity: ToastGravity.BOTTOM,
+          timeInSecForIosWeb: 4,
+          backgroundColor: Colors.red,
+          textColor: Colors.white,
+          fontSize: 16.0
+      );
+      return;
+    }
+
+    var file = await http.MultipartFile.fromPath(
+      'file',
+      imagePath,
+      contentType: MediaType.parse(mimeType),
+    );
+    request.files.add(file);
+
+    try {
+      var response = await request.send();
+      if (response.statusCode == 200) {
+        Fluttertoast.showToast(
+            msg: "L'image à bien été envoyée à notre serveur",
+            toastLength: Toast.LENGTH_LONG,
+            gravity: ToastGravity.TOP,
+            timeInSecForIosWeb: 4,
+            backgroundColor: Colors.green,
+            textColor: Colors.white,
+            fontSize: 16.0
+        );
+        var responseData = await http.Response.fromStream(response);
+        var dataDict = json.decode(responseData.body);
+        setState(() {
+          isUploading = false;
+        });
+        return dataDict;
+      } else {
+        Fluttertoast.showToast(
+            msg: 'Erreur : ${response.statusCode}',
+            toastLength: Toast.LENGTH_LONG,
+            gravity: ToastGravity.BOTTOM,
+            timeInSecForIosWeb: 4,
+            backgroundColor: Colors.red,
+            textColor: Colors.white,
+            fontSize: 16.0
+        );
+      }
+    } catch (e) {
+      Fluttertoast.showToast(
+          msg: "Erreur lors de l'envoi de l'image : $e",
+          toastLength: Toast.LENGTH_LONG,
+          gravity: ToastGravity.BOTTOM,
+          timeInSecForIosWeb: 4,
+          backgroundColor: Colors.red,
+          textColor: Colors.white,
+          fontSize: 16.0);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.black,
       body: FutureBuilder<ImageInfo>(
-        future: _loadImage(imagePath),
+        future: _loadImage(widget.imagePath),
         builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
+          if (snapshot.connectionState == ConnectionState.waiting || isUploading) {
             return const Center(
               child: CircularProgressIndicator(),
             );
@@ -106,7 +185,7 @@ class ImageViewer extends StatelessWidget {
               children: [
                 Center(
                   child: Image.file(
-                    File(imagePath),
+                    File(widget.imagePath),
                     fit: BoxFit.contain,
                   ),
                 ),
@@ -133,12 +212,12 @@ class ImageViewer extends StatelessWidget {
                           context: navigatorKey.currentContext!,
                           builder: (BuildContext context) {
                             return ConfirmDialog(
-                              imagePath: imagePath,
+                              imagePath: widget.imagePath,
                               onConfirm: () {
                                 Navigator.of(context).pop();
                                 Navigator.of(context).push(
                                   MaterialPageRoute(
-                                    builder: (context) => ImageDetailsPage(imagePath: imagePath),
+                                    builder: (context) => ImageDetailsPage(imagePath: widget.imagePath, totalSum: 0.0, countDict: null),
                                   ),
                                 );
                               },
@@ -146,12 +225,13 @@ class ImageViewer extends StatelessWidget {
                           },
                         );
                       } else {
-                        if(alreadyConfirmed){
-                          uploadImage(imagePath);
-                        }
+                        var dataDict = await uploadImage(widget.imagePath);
+                        var filePath = dataDict['file_path'];
+                        var totalSum = dataDict['total_sum'];
+                        var countDict = dataDict['count'];
                         Navigator.of(context).push(
                           MaterialPageRoute(
-                            builder: (context) => ImageDetailsPage(imagePath: imagePath),
+                            builder: (context) => ImageDetailsPage(imagePath: filePath, totalSum: totalSum, countDict: countDict),
                           ),
                         );
                       }
@@ -170,7 +250,9 @@ class ImageViewer extends StatelessWidget {
 
 class ImageDetailsPage extends StatefulWidget {
   final String imagePath;
-  const ImageDetailsPage({Key? key, required this.imagePath}) : super(key: key);
+  final double totalSum;
+  final dynamic countDict;
+  const ImageDetailsPage({Key? key, required this.imagePath, required this.totalSum,  required this.countDict}) : super(key: key);
   @override
   State<ImageDetailsPage> createState() => _ImageDetailsPageState();
 }
@@ -211,10 +293,28 @@ class _ImageDetailsPageState extends State<ImageDetailsPage> with SingleTickerPr
       backgroundColor: Colors.black,
       body: Stack(
         children: [
-          Positioned.fill(
-            child: Image.file(
-              File(widget.imagePath),
-              fit: BoxFit.contain,
+            Positioned.fill(
+            child: Center(
+              child: RotatedBox(
+                quarterTurns: 1, // Ajustez le nombre de quart de tours pour obtenir l'orientation souhaitée
+                child: Image.network(
+                  "http://149.202.49.224:8000/${widget.imagePath}",
+                  fit: BoxFit.contain,
+                  loadingBuilder: (BuildContext context, Widget child, ImageChunkEvent? loadingProgress) {
+                    if (loadingProgress == null) return child;
+                    return Center(
+                      child: CircularProgressIndicator(
+                        value: loadingProgress.expectedTotalBytes != null
+                            ? loadingProgress.cumulativeBytesLoaded / loadingProgress.expectedTotalBytes!
+                            : null,
+                      ),
+                    );
+                  },
+                  errorBuilder: (BuildContext context, Object exception, StackTrace? stackTrace) {
+                    return const Text('Erreur lors du chargement de l\'image réseau');
+                  },
+                ),
+              ),
             ),
           ),
           Positioned.fill(
@@ -222,7 +322,7 @@ class _ImageDetailsPageState extends State<ImageDetailsPage> with SingleTickerPr
               controller: controller,
               initialChildSize: 0.1,
               minChildSize: 0.1,
-              maxChildSize: 1,
+              maxChildSize: 0.9,
               builder: (BuildContext context, ScrollController scrollController) {
                 return GestureDetector(
                   onTap: _toggleSheet,
@@ -236,33 +336,35 @@ class _ImageDetailsPageState extends State<ImageDetailsPage> with SingleTickerPr
                     ),
                     child: ListView(
                       controller: scrollController,
+                      padding: const EdgeInsets.only(top: 8.0),
                       children: [
-                        Transform.translate(
-                          offset: const Offset(0, -20), // Déplacez le ListTile vers le haut de 10 pixels
-                          child: const ListTile(
-                            contentPadding: EdgeInsets.symmetric(vertical: 4.0, horizontal: 15.0),
-                            leading: Icon(Icons.info),
-                            title: Text('Détails'),
-                          ),
-                        ),
                         const ListTile(
+                          leading: Icon(Icons.info),
+                          title: Text('Détails'),
+                        ),
+                        ListTile(
                           leading: Icon(Icons.attach_money),
-                          title: Text('Nombre de pièces'),
-                          subtitle: Text('Somme: \$XXX.XX'),
+                          title: Text('Total'),
+                          subtitle: Text("Somme: ${widget.totalSum}€"),
                         ),
-                        const ListTile(
+                        ListTile(
+                          leading: Icon(Icons.attach_money),
+                          title: Text("Nombre de pièces: ${widget.countDict["count_pieces"]}"),
+                          subtitle: Text("Somme: ${widget.countDict["sum_pieces"]}"),
+                        ),
+                        ListTile(
                           leading: Icon(Icons.money_off),
-                          title: Text('Nombre de billets'),
-                          subtitle: Text('Somme: \$XXX.XX'),
+                          title: Text("Nombre de billets: ${widget.countDict["count_billets"]}"),
+                          subtitle: Text("Somme: ${widget.countDict["sum_billets"]}"),
                         ),
-                        const ListTile(
+                        ListTile(
                           leading: Icon(Icons.check),
-                          title: Text('Nombre de chèques'),
+                          title: Text("Nombre de chèques: ${widget.countDict["count_cheques"]}"),
                           subtitle: Text('Somme: \$XXX.XX'),
                         ),
-                        const ListTile(
+                        ListTile(
                           leading: Icon(Icons.receipt),
-                          title: Text('Nombre de tickets de caisse'),
+                          title: Text("Nombre de tickets de caisse: ${widget.countDict["count_tickets"]}"),
                           subtitle: Text('Somme: \$XXX.XX'),
                         ),
                       ],
