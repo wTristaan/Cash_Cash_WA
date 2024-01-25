@@ -227,7 +227,7 @@ class _ImageViewerState extends State<ImageViewer> {
                       } else {
                         var dataDict = await uploadImage(widget.imagePath);
                         var filePath = dataDict['file_path'];
-                        var totalSum = dataDict['total_sum'];
+                        var totalSum = dataDict['total_sum'].toDouble();
                         var countDict = dataDict['count'];
                         Navigator.of(context).push(
                           MaterialPageRoute(
@@ -293,7 +293,7 @@ class _ImageDetailsPageState extends State<ImageDetailsPage> with SingleTickerPr
       backgroundColor: Colors.black,
       body: Stack(
         children: [
-            Positioned.fill(
+          Positioned.fill(
             child: Center(
               child: RotatedBox(
                 quarterTurns: 1, // Ajustez le nombre de quart de tours pour obtenir l'orientation souhaitée
@@ -347,26 +347,28 @@ class _ImageDetailsPageState extends State<ImageDetailsPage> with SingleTickerPr
                           title: Text('Total'),
                           subtitle: Text("Somme: ${widget.totalSum}€"),
                         ),
-                        ListTile(
-                          leading: Icon(Icons.attach_money),
-                          title: Text("Nombre de pièces: ${widget.countDict["count_pieces"]}"),
-                          subtitle: Text("Somme: ${widget.countDict["sum_pieces"]}"),
-                        ),
-                        ListTile(
-                          leading: Icon(Icons.money_off),
-                          title: Text("Nombre de billets: ${widget.countDict["count_billets"]}"),
-                          subtitle: Text("Somme: ${widget.countDict["sum_billets"]}"),
-                        ),
-                        ListTile(
-                          leading: Icon(Icons.check),
-                          title: Text("Nombre de chèques: ${widget.countDict["count_cheques"]}"),
-                          subtitle: Text('Somme: \$XXX.XX'),
-                        ),
-                        ListTile(
-                          leading: Icon(Icons.receipt),
-                          title: Text("Nombre de tickets de caisse: ${widget.countDict["count_tickets"]}"),
-                          subtitle: Text('Somme: \$XXX.XX'),
-                        ),
+                        if (widget.countDict != null) ...[
+                          ListTile(
+                            leading: Icon(Icons.money_off),
+                            title: Text("Nombre de pièces: ${widget.countDict["count_pieces"]}"),
+                            subtitle: Text("Somme: ${widget.countDict["sum_pieces"]}"),
+                          ),
+                          ListTile(
+                            leading: Icon(Icons.money_off),
+                            title: Text("Nombre de billets: ${widget.countDict["count_billets"]}"),
+                            subtitle: Text("Somme: ${widget.countDict["sum_billets"]}"),
+                          ),
+                          ListTile(
+                            leading: Icon(Icons.check),
+                            title: Text("Nombre de chèques: ${widget.countDict["count_cheques"]}"),
+                            subtitle: Text('Somme: \$XXX.XX'),
+                          ),
+                          ListTile(
+                            leading: Icon(Icons.receipt),
+                            title: Text("Nombre de tickets de caisse: ${widget.countDict["count_tickets"]}"),
+                            subtitle: Text('Somme: \$XXX.XX'),
+                          ),
+                        ],
                       ],
                     ),
                   ),
