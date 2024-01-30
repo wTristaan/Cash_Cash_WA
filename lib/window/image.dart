@@ -342,12 +342,12 @@ class _ImageDetailsPageState extends State<ImageDetailsPage> with SingleTickerPr
                           leading: Icon(Icons.info),
                           title: Text('Détails'),
                         ),
-                        ListTile(
-                          leading: Icon(Icons.attach_money),
-                          title: Text('Total'),
-                          subtitle: Text("Somme: ${widget.totalSum}€"),
-                        ),
                         if (widget.countDict != null) ...[
+                          ListTile(
+                            leading: Icon(Icons.attach_money),
+                            title: Text('Total'),
+                            subtitle: Text("Somme: ${widget.totalSum}€"),
+                          ),
                           ListTile(
                             leading: Icon(Icons.money_off),
                             title: Text("Nombre de pièces: ${widget.countDict["count_pieces"]}"),
