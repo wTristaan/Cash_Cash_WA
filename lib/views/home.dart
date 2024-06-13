@@ -254,13 +254,13 @@ class _YoloVideoState extends State<YoloVideo> {
             child: Stack(
             children: [
               if (camsPermissionIsGranted && isCams) ...[
-                _cameraIconWidget(),    // L'icône de l'appareil photo
-                _galleryIconWidget(),   // L'icône de la galerie
-                _flashIconWidget(),     // L'icône du flash
+                //_cameraIconWidget(),    // L'icône de l'appareil photo
+                //_galleryIconWidget(),   // L'icône de la galerie
+                //_flashIconWidget(),     // L'icône du flash
               ]
               else if (!camsPermissionIsGranted && !isCams) ...[
-                _cameraIconWidget(),    // L'icône de l'appareil photo
-                _galleryIconWidget(),   // L'icône de la galerie
+                //_cameraIconWidget(),    // L'icône de l'appareil photo
+                //_galleryIconWidget(),   // L'icône de la galerie
               ]
               else ...[
                 const Center(
@@ -275,7 +275,7 @@ class _YoloVideoState extends State<YoloVideo> {
     );
   }
 
-  void _toggleFlash() async {
+  /*void _toggleFlash() async {
     if (controller != null) {
       setState(() {
         _isFlashOn = !_isFlashOn;
@@ -472,7 +472,7 @@ class _YoloVideoState extends State<YoloVideo> {
       //this.objDetect = objDetect;
       _image = File(image.path);
     });
-  }
+  }*/
 
 /*------------------------------------------------------------------------------------------------------------------------------*/
 
