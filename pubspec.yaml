@@ -28,9 +28,7 @@ environment:
 # the latest version available on pub.dev. To see which dependencies have newer
 # versions available, run `flutter pub outdated`.
 dependencies:
-  # pytorch_mobile: ^0.2.2
-  # pytorch_lite: ^2.0.5
-  # flutter_pytorch: ^1.0.1
+  flutter_pytorch: ^1.0.1
   path_provider: ^2.1.3
   image: ^3.3.0
   flutter_speed_dial: ^7.0.0
