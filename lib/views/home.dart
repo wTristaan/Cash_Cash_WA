@@ -283,7 +283,7 @@ class _YoloVideoState extends State<YoloVideo> {
               ),
             ),
           ),
-          Expanded(
+          Positioned.fill(
             child: Stack(
             children: [
               _retourButtonWidget(),
@@ -311,20 +311,24 @@ class _YoloVideoState extends State<YoloVideo> {
 
   Widget _retourButtonWidget() {
     return SafeArea(
-        child: Positioned(
-          top: 0,
-          left: 0,
-          child: IconButton(
-            onPressed: () {
-              Navigator.pop(context);
-            },
-            icon: const Icon(
-              Icons.arrow_back,
-              color: Colors.white,
-              size: 30.0,
+        top: true,
+        child: Stack(
+          children: [
+            Positioned(
+              top: 0,
+              left: 0,
+              child: IconButton(
+                onPressed: () {
+                  Navigator.pop(context);
+                },
+                icon: const Icon(
+                Icons.arrow_back,
+                color: Colors.white,
+                size: 30.0,
+                ),
+              ),
             ),
-          ),
-        ),
+        ])
     );
   }
 

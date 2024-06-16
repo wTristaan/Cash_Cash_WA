@@ -5,6 +5,8 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_speed_dial/flutter_speed_dial.dart';
 
+import '../main.dart';
+
 class HistoriquePageWidget extends StatefulWidget {
   const HistoriquePageWidget({super.key});
 
@@ -258,8 +260,7 @@ class _HistoriquePageWidgetState extends State<HistoriquePageWidget> {
           label: 'Prendre en photo',
           labelStyle: const TextStyle(fontSize: 18.0),
           onTap: () async {
-            Navigator.push(
-              context,
+            navigatorKey.currentState?.push(
               MaterialPageRoute(builder: (context) => YoloVideo(model: YoloModel())),
             );
           },
