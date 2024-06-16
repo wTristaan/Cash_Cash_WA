@@ -107,6 +107,39 @@ class _MyAppState extends State<StartApp> {
 class YoloVideo extends StatefulWidget {
   final YoloModel model;
   const YoloVideo({super.key, required this.model});
+
+  goToPreview(image) async {
+    navigatorKey.currentState?.push(
+      MaterialPageRoute(
+        builder: (context) => ImageViewer(imagePath: image.path),
+      ),
+    );
+  }
+
+  Future<void> openGallery() async {
+    var status = await Permission.photos.request();
+    if (!status.isGranted) {
+      status = await Permission.storage.request();
+    }
+    if (status.isGranted) {
+      final picker = ImagePicker();
+      final pickedFile = await picker.pickImage(source: ImageSource.gallery);
+      if (pickedFile != null) {
+        goToPreview(pickedFile);
+      }else{
+        Fluttertoast.showToast(
+            msg: "Aucune image chargée",
+            toastLength: Toast.LENGTH_LONG,
+            gravity: ToastGravity.TOP,
+            timeInSecForIosWeb: 4,
+            backgroundColor: Colors.red,
+            textColor: Colors.white,
+            fontSize: 16.0
+        );
+      }
+    }
+  }
+
   @override
   State<YoloVideo> createState() => _YoloVideoState();
 }
@@ -253,6 +286,7 @@ class _YoloVideoState extends State<YoloVideo> {
           Expanded(
             child: Stack(
             children: [
+              _retourButtonWidget(),
               if (camsPermissionIsGranted && isCams) ...[
                 //_cameraIconWidget(),    // L'icône de l'appareil photo
                 //_galleryIconWidget(),   // L'icône de la galerie
@@ -272,6 +306,25 @@ class _YoloVideoState extends State<YoloVideo> {
           ),
         ],
       ),
+    );
+  }
+
+  Widget _retourButtonWidget() {
+    return SafeArea(
+        child: Positioned(
+          top: 0,
+          left: 0,
+          child: IconButton(
+            onPressed: () {
+              Navigator.pop(context);
+            },
+            icon: const Icon(
+              Icons.arrow_back,
+              color: Colors.white,
+              size: 30.0,
+            ),
+          ),
+        ),
     );
   }
 
