@@ -271,6 +271,7 @@ class _YoloVideoState extends State<YoloVideo> {
                 onPressed: () async {
                   if (isDetecting) {
                     stopDetection();
+                    print("Detecteds: ${yoloResults.length}");
                   } else {
                     startDetection();
                   }
@@ -310,7 +311,8 @@ class _YoloVideoState extends State<YoloVideo> {
   }
 
   Widget _retourButtonWidget() {
-    return SafeArea(
+    return
+      SafeArea(
         child: Positioned(
           top: 0,
           left: 0,
@@ -715,4 +717,3 @@ class _YoloVideoState extends State<YoloVideo> {
     }).toList();
   }
 }
-
