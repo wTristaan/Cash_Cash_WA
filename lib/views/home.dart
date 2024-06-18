@@ -161,7 +161,6 @@ class _YoloVideoState extends State<YoloVideo> {
   late XFile pic ;
   late ImagePicker _picker;
   late CameraController controller;
-  late List<Map<String, dynamic>>historique;
   late List<Map<String, dynamic>> yoloResults;
   CameraImage? cameraImage;
   bool isLoaded = false;
@@ -273,8 +272,8 @@ class _YoloVideoState extends State<YoloVideo> {
               child: IconButton(
                 onPressed: () async {
                   if (isDetecting) {
-                    print("YOLO RESULT ${yoloResults.toString()}");
                     stopDetection();
+                    print("Detecteds: ${yoloResults.length}");
                   } else {
                     startDetection();
                   }
@@ -751,7 +750,7 @@ class _YoloVideoState extends State<YoloVideo> {
       if(autrePatterns.hasMatch(money)) {
         break;
       }
-      
+
       // Extraire la valeur numérique
       double value = double.parse(RegExp(r'\d+').firstMatch(money)!.group(0)!);
       String euroValue = '$value€';
