@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 import 'dart:isolate';
@@ -11,17 +12,14 @@ import 'package:image/image.dart' as imglib;
 import 'package:image_picker/image_picker.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:permission_handler/permission_handler.dart';
-import 'package:flutter_pytorch/pigeon.dart';
-import 'package:flutter_pytorch/flutter_pytorch.dart';
+
 import '../main.dart';
 import 'package:intl/intl.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../entities/yolo.dart';
 import '../window/image.dart';
-/*
-* LA PARTIE COMMENTEE FAIT PARTIE DU CODE DE LA DETECTION SUR UNE PHOTO, VOUS POUVEZ L'ENLEVER SI VOUS VOULEZ
-*/
+
 
 enum Options { none, imagev8, frame }
 late List<CameraDescription> cameras;
@@ -35,7 +33,6 @@ class StartApp extends StatefulWidget {
 class _MyAppState extends State<StartApp> {
   Options option = Options.none;
   YoloModel model = YoloModel();
-
 
   @override
   void initState() {
@@ -79,7 +76,7 @@ class _MyAppState extends State<StartApp> {
             },
           ),
           SpeedDialChild(
-            child: const Icon(Icons.camera),
+            child: Image.asset('assets/gallery.png'),
             backgroundColor: Colors.blue,
             foregroundColor: Colors.white,
             label: 'YoloV8 on Image',
@@ -100,6 +97,8 @@ class _MyAppState extends State<StartApp> {
       return YoloVideo(model: model);
     }
     if (option == Options.imagev8) {
+      final _YoloVideoState gal = new _YoloVideoState() ;
+      gal._openGallery();
       //return YoloImageV8(model: model);
     }
     return const Center(child: Text("Choose Task"));
@@ -147,12 +146,7 @@ class YoloVideo extends StatefulWidget {
 }
 
 class _YoloVideoState extends State<YoloVideo> {
-  String? _imagePrediction;
-  List? _prediction;
-  File? _image;
-  List<ResultObjectDetection?> objDetect = [];
-  ClassificationModel? _imageModel;
-  late ModelObjectDetection _objectModel;
+  String? textToShow;
   bool isCams = false;
   bool camsPermissionIsGranted = false;
   bool _isFlashOn = false;
@@ -165,7 +159,6 @@ class _YoloVideoState extends State<YoloVideo> {
   CameraImage? cameraImage;
   bool isLoaded = false;
   bool isDetecting = false;
-  //late ModelObjectDetection _objectModel;
   bool isBusy = false;
   bool isgranted = false;
   late List<Map<String, dynamic>> result = [];
@@ -258,17 +251,12 @@ class _YoloVideoState extends State<YoloVideo> {
           ),
           ...displayBoxesAroundRecognizedObjects(size),
           Positioned(
-            bottom: 75,
-            left: -20,
+            top: 60,
+            right: 138,
             width: MediaQuery.of(context).size.width,
             child: Container(
-              height: 80,
-              width: 80,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                border: Border.all(
-                    width: 3, color: Colors.white, style: BorderStyle.solid),
-              ),
+              height: 45,
+              width: 45,
               child: IconButton(
                 onPressed: () async {
                   if (isDetecting) {
@@ -281,28 +269,31 @@ class _YoloVideoState extends State<YoloVideo> {
                 icon: Icon(
                   isDetecting ? Icons.stop : Icons.play_arrow,
                   color: isDetecting ? Colors.red : Colors.white,
+                  size: 35,
                 ),
-                iconSize: 50,
               ),
             ),
           ),
+          // Positioned(
+          // top: 0,
+          // left: 0,
+          // right: 0,
+          // bottom: 0,
           Positioned.fill(
             child: Stack(
             children: [
               _retourButtonWidget(),
               if (camsPermissionIsGranted && isCams) ...[
-                //_cameraIconWidget(),    // L'icône de l'appareil photo
-                //_galleryIconWidget(),   // L'icône de la galerie
-                //_flashIconWidget(),     // L'icône du flash
+                _cameraIconWidget(),    // L'icône de l'appareil photo
+                _flashIconWidget(),     // L'icône du flash
               ]
               else if (!camsPermissionIsGranted && !isCams) ...[
-                //_cameraIconWidget(),    // L'icône de l'appareil photo
-                //_galleryIconWidget(),   // L'icône de la galerie
+                _cameraIconWidget(),    // L'icône de l'appareil photo
               ]
               else ...[
-                const Center(
-                child: CircularProgressIndicator(),
-                ),
+                  const Center(
+                    child: CircularProgressIndicator(),
+                  ),
                 ],
               ],
             ),
@@ -335,19 +326,17 @@ class _YoloVideoState extends State<YoloVideo> {
     );
   }
 
-  /*void _toggleFlash() async {
-    if (controller != null) {
+  void _toggleFlash() async {
       setState(() {
         _isFlashOn = !_isFlashOn;
         _flashIcon = _isFlashOn ? Icons.flash_on : Icons.flash_off;
       });
       await controller.setFlashMode(_isFlashOn ? FlashMode.torch : FlashMode.off);
-    }
   }
 
   Widget _flashIconWidget() {
     return Positioned(
-      top: 0,
+      top: 32,
       left: 30.0,
       child: GestureDetector(
         onTap: _toggleFlash,
@@ -360,6 +349,36 @@ class _YoloVideoState extends State<YoloVideo> {
     );
   }
 
+  Future<void> _takePhoto() async {
+    try {
+      if (!controller.value.isInitialized) {
+        Fluttertoast.showToast(
+            msg: "Camera not initialized",
+            toastLength: Toast.LENGTH_LONG,
+            gravity: ToastGravity.TOP,
+            timeInSecForIosWeb: 4,
+            backgroundColor: Colors.red,
+            textColor: Colors.white,
+            fontSize: 16.0
+        );
+        return;
+      }
+    } catch (e) {
+      print('Error taking picture: $e');
+      Fluttertoast.showToast(
+          msg: "Error taking picture: $e",
+          toastLength: Toast.LENGTH_LONG,
+          gravity: ToastGravity.TOP,
+          timeInSecForIosWeb: 4,
+          backgroundColor: Colors.red,
+          textColor: Colors.white,
+          fontSize: 16.0
+      );
+    }
+    final image = await controller.takePicture();
+    goToPreview(image);
+  }
+
   Widget _cameraIconWidget() {
     return Align(
       alignment: Alignment.bottomCenter,
@@ -367,20 +386,13 @@ class _YoloVideoState extends State<YoloVideo> {
         onTap: () async {
           if (!camsPermissionIsGranted && !isCams) {
             openAppSettings();
-          }else{
-            try {
-              if (controller != null) {
-                setState(() {
-                  _isFlashOn = false;
-                  _flashIcon = Icons.flash_off;
-                });
-                await controller.setFlashMode(FlashMode.off);
-              }
-              final image = await controller.takePicture();
-              goToPreview(image);
-            } catch (e) {
-              print('Error taking picture: $e');
-            }
+          } else {
+            setState(() {
+              _isFlashOn = false;
+              _flashIcon = Icons.flash_off;
+            });
+            await controller.setFlashMode(FlashMode.off);
+            await _takePhoto();
           }
         },
         child: Padding(
@@ -390,23 +402,6 @@ class _YoloVideoState extends State<YoloVideo> {
             width: 80.0,
             height: 80.0,
           ),
-        ),
-      ),
-    );
-  }
-
-  Widget _galleryIconWidget() {
-    return Positioned(
-      bottom: 40.0,
-      right: 90.0,
-      child: GestureDetector(
-        onTap: () {
-          _openGallery();
-        },
-        child: Image.asset(
-          'assets/gallery.png',
-          width: 30.0,
-          height: 30.0,
         ),
       ),
     );
@@ -442,99 +437,6 @@ class _YoloVideoState extends State<YoloVideo> {
       ),
     );
   }
-
-  //load your model
-  Future loadModel() async {
-    String pathImageModel = "assets/models/model_classification.pt";
-    //String pathCustomModel = "assets/models/custom_model.ptl";
-    String pathObjectDetectionModel = "assets/models/yolov5s.torchscript";
-    try {
-      //_imageModel = await FlutterPytorch.loadClassificationModel(
-          //pathImageModel, 224, 224,
-          //labelPath: "assets/labels.txt");
-      //_customModel = await PytorchLite.loadCustomModel(pathCustomModel);
-      _objectModel = await FlutterPytorch.loadObjectDetectionModel(
-          pathObjectDetectionModel, 80, 640, 640,
-          labelPath: "assets/labels.txt");
-    } catch (e) {
-      if (e is PlatformException) {
-        print("only supported for android, Error is $e");
-      } else {
-        print("Error is $e");
-      }
-    }
-  }
-
-  Future runObjectDetection() async {
-    //pick a random image
-    final XFile? image = await _picker.pickImage(source: ImageSource.gallery);
-    objDetect = await _objectModel.getImagePrediction(
-        await File(image!.path).readAsBytes(),
-        minimumScore: 0.1,
-        IOUThershold: 0.3);
-    objDetect.forEach((element) {
-      print({
-        "score": element?.score,
-        "className": element?.className,
-        "class": element?.classIndex,
-        "rect": {
-          "left": element?.rect.left,
-          "top": element?.rect.top,
-          "width": element?.rect.width,
-          "height": element?.rect.height,
-          "right": element?.rect.right,
-          "bottom": element?.rect.bottom,
-        },
-      });
-    });
-    setState(() {
-      //this.objDetect = objDetect;
-      _image = File(image.path);
-    });
-  }
-
-  Future runClassification() async {
-    objDetect = [];
-    //pick a random image
-    final XFile? image = await _picker.pickImage(source: ImageSource.gallery);
-    //get prediction
-    //labels are 1000 random english words for show purposes
-    print(image!.path);
-    _imagePrediction = await _imageModel!
-        .getImagePrediction(await File(image!.path).readAsBytes());
-
-    List<double?>? predictionList = await _imageModel!.getImagePredictionList(
-      await File(image.path).readAsBytes(),
-    );
-
-    print(predictionList);
-    List<double?>? predictionListProbabilites =
-    await _imageModel!.getImagePredictionListProbabilities(
-      await File(image.path).readAsBytes(),
-    );
-    //Gettting the highest Probability
-    double maxScoreProbability = double.negativeInfinity;
-    double sumOfProbabilites = 0;
-    int index = 0;
-    for (int i = 0; i < predictionListProbabilites!.length; i++) {
-      if (predictionListProbabilites[i]! > maxScoreProbability) {
-        maxScoreProbability = predictionListProbabilites[i]!;
-        sumOfProbabilites = sumOfProbabilites + predictionListProbabilites[i]!;
-        index = i;
-      }
-    }
-    print(predictionListProbabilites);
-    print(index);
-    print(sumOfProbabilites);
-    print(maxScoreProbability);
-
-    setState(() {
-      //this.objDetect = objDetect;
-      _image = File(image.path);
-    });
-  }*/
-
-/*------------------------------------------------------------------------------------------------------------------------------*/
 
   Future<void> loadYoloModel() async {
     final byteData = await rootBundle.load('assets/MARIE7000IR9.onnx');
@@ -658,7 +560,7 @@ class _YoloVideoState extends State<YoloVideo> {
     await controller.startImageStream((image) async {
       if (isDetecting) {
         cameraImage = image;
-        if(countFrame % 20 == 0){
+        if(countFrame % 10 == 0){
           yoloOnFrame(image);
           countFrame = 0;
         }
@@ -843,4 +745,3 @@ class _YoloVideoState extends State<YoloVideo> {
     }).toList();
   }
 }
-

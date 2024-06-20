@@ -12,7 +12,7 @@ import 'package:http_parser/http_parser.dart';
 import 'package:fluttertoast/fluttertoast.dart';
 
 dynamic uploadImage(String imagePath) async {
-  var uri = Uri.parse('http://149.202.49.224:8000/uploadfile/');
+  var uri = Uri.parse('http://149.202.49.224:8001/uploadfile/');
   var request = http.MultipartRequest('POST', uri);
 
   var mimeType = lookupMimeType(imagePath);
@@ -96,7 +96,7 @@ class _ImageViewerState extends State<ImageViewer> {
     return completer.future;
   }
 
-  dynamic uploadImage(String imagePath) async {
+  /*dynamic uploadImagept(String imagePath) async {
     setState(() {
       isUploading = true;
     });
@@ -163,7 +163,7 @@ class _ImageViewerState extends State<ImageViewer> {
           textColor: Colors.white,
           fontSize: 16.0);
     }
-  }
+  }*/
 
   @override
   Widget build(BuildContext context) {
@@ -298,7 +298,7 @@ class _ImageDetailsPageState extends State<ImageDetailsPage> with SingleTickerPr
               child: RotatedBox(
                 quarterTurns: 1, // Ajustez le nombre de quart de tours pour obtenir l'orientation souhaitée
                 child: Image.network(
-                  "http://149.202.49.224:8000/${widget.imagePath}",
+                  "http://149.202.49.224:8001/${widget.imagePath}",
                   fit: BoxFit.contain,
                   loadingBuilder: (BuildContext context, Widget child, ImageChunkEvent? loadingProgress) {
                     if (loadingProgress == null) return child;
