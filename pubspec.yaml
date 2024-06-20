@@ -28,7 +28,6 @@ environment:
 # the latest version available on pub.dev. To see which dependencies have newer
 # versions available, run `flutter pub outdated`.
 dependencies:
-  flutter_pytorch: ^1.0.1
   path_provider: ^2.1.3
   image: ^3.3.0
   flutter_speed_dial: ^7.0.0
@@ -76,8 +75,6 @@ flutter:
     - assets/gallery.png
     - assets/bg.jpg
     - assets/MARIE7000IR9.onnx
-    - assets/MARIE7000.pt
-    - assets/labels.txt
   #   - images/a_dot_ham.jpeg
 
   # An image asset can refer to one or more resolution-specific "variants", see
