@@ -1,9 +1,10 @@
-import 'dart:math' as math;
+import 'dart:convert';
 import 'package:cash_cash/entities/yolo.dart';
 import 'package:cash_cash/views/home.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_speed_dial/flutter_speed_dial.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../main.dart';
 
@@ -24,57 +25,35 @@ class _HistoriquePageWidgetState extends State<HistoriquePageWidget> {
   // Cet index garde la trace de l'élément actuellement en mode édition
   int? editingIndex;
 
+  void getHistorique() async {
+    final SharedPreferences prefs = await SharedPreferences.getInstance();
+    if(prefs.containsKey("historique") && prefs.getString("historique")!.isNotEmpty) {
+      setState(() {
+        items = List<Map<String, dynamic>>.from(jsonDecode(prefs.getString("historique")!));
+      });
+
+      print("items $items");
+    } else {
+      setState(() {
+        items = [];
+      });
+    }
+  }
+
+  Future<void> eraseStoredData() async {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+
+    await prefs.remove("historique");
+    await prefs.remove("nextIndex");
+  }
+
   @override
   void initState() {
     super.initState();
-
-    items = [
-      // placeholder
-      // TODO: historique
-      {
-        "title": "16/06/2024 15:31",
-        "image_url": "", // TODO: ajouter l'image
-        "detail": {
-          "total": "115€",
-          "nbr_pieces": "7",
-          "total_pieces": "5€",
-          "nbr_billets": "2",
-          "total_billets": "110€",
-          "items": [
-            {
-              "name": "5 centimes",
-              "price": "0.5€",
-              "somme": "2€",
-              "quantity": 4
-            },
-            {
-              "name": "2 euros",
-              "price": "2€",
-              "somme": "4€",
-              "quantity": 2
-            },
-            {
-              "name": "1 euros",
-              "price": "1€",
-              "somme": "1€",
-              "quantity": 1
-            },
-            {
-              "name": "10 euros",
-              "price": "10€",
-              "somme": "10€",
-              "quantity": 1
-            },
-            {
-              "name": "100 euros",
-              "price": "100€",
-              "somme": "100€",
-              "quantity": 1
-            }
-          ]
-        },
-      }
-    ];
+    //eraseStoredData();
+    setState(() {
+      getHistorique();
+    });
 
     titleController = TextEditingController();
   }
@@ -82,14 +61,17 @@ class _HistoriquePageWidgetState extends State<HistoriquePageWidget> {
   @override
   void dispose() {
     titleController?.dispose();
+    items = [];
     super.dispose();
   }
 
   Future<List<Map<String, dynamic>>> loadData() async {
+    //getHistorique();
+
     return items;
   }
 
-  LinearGradient gradient_cashcash() {
+  LinearGradient gradientCashcash() {
     return const LinearGradient(
       colors: [
         Color(0xFF4B39EF),
@@ -152,7 +134,7 @@ class _HistoriquePageWidgetState extends State<HistoriquePageWidget> {
                         itemCount: items.length,
                         itemBuilder: (context, index) {
                           var item = items[index];
-                          List<dynamic> itemsList = item['detail']['items']; // Accès à la liste 'items'
+                          List<dynamic> itemsList = item['items']; // Accès à la liste 'items'
                           // Si l'index actuel est l'index d'édition, montrer le formulaire de modification du titre
                           if (index == editingIndex) {
                             titleController?.text = item['title'];  // Définir la valeur initiale du TextField
@@ -175,8 +157,10 @@ class _HistoriquePageWidgetState extends State<HistoriquePageWidget> {
                                         // Valider les changements
                                         setState(() {
                                           if (titleController!.text.isNotEmpty == true) {
-                                            items[index]['title'] = titleController!.text;
-                                            item['title'] = titleController!.text;
+                                            String modifiedTitle = titleController!.text;
+                                            items[index]['title'] = modifiedTitle;
+                                            item['title'] = modifiedTitle;
+                                            modifyHistorique(item['index'], modifiedTitle);
                                             editingIndex = null;
                                           }
                                         });
@@ -201,24 +185,24 @@ class _HistoriquePageWidgetState extends State<HistoriquePageWidget> {
                               margin: EdgeInsets.all(8.0),
                               child: ExpansionTile(
                                 title: Text(item['title']),
-                                subtitle: Text("total : ${item['detail']['total']}"),
+                                subtitle: Text("total : ${item['total']}"),
                                 children: <Widget>[
                                   // image de la détection
-                                  // Container(
-                                  //   width: double.infinity, // Assure que l'image prend la largeur complète de la card
-                                  //   child: Image.network(
-                                  //     item['image_url'], // Remplacez 'image_url' par la clé réelle dans item qui contient l'URL de l'image
-                                  //     fit: BoxFit.cover, // Assure que l'image couvre l'espace disponible sans perdre ses proportions
-                                  //   ),
-                                  // ),
+                                  Container(
+                                    width: double.infinity, // Assure que l'image prend la largeur complète de la card
+                                    child: Image.network(
+                                      "http://149.202.49.224:8001/${item['image_url']}", // Remplacez 'image_url' par la clé réelle dans item qui contient l'URL de l'image
+                                      fit: BoxFit.cover, // Assure que l'image couvre l'espace disponible sans perdre ses proportions
+                                    ),
+                                  ),
                                   ListTile(
                                     contentPadding: const EdgeInsets.symmetric(vertical: 0, horizontal: 10.0),
                                     title: Text(
-                                        "Le montant détecté est de : ${item['detail']['total']}\n"
-                                        "Le nombre de pièce détecté est de : ${item['detail']['nbr_pieces']}\n"
-                                        "Le montant total de ces pièces est de : ${item['detail']['total_pieces']}\n"
-                                        "Le nombre de billet détecté est de : ${item['detail']['nbr_billets']}\n"
-                                        "Le montant total de ces billets est de : ${item['detail']['total_billets']}\n"
+                                        "Le montant détecté est de : ${item['total']}\n"
+                                        "Le nombre de pièce détecté est de : ${item['nbr_pieces']}\n"
+                                        "Le montant total de ces pièces est de : ${item['total_pieces']}\n"
+                                        "Le nombre de billet détecté est de : ${item['nbr_billets']}\n"
+                                        "Le montant total de ces billets est de : ${item['total_billets']}\n"
                                         "Voici le détails de la détection :"
                                     ),
                                   ),
@@ -244,7 +228,9 @@ class _HistoriquePageWidgetState extends State<HistoriquePageWidget> {
                                         onPressed: () {
                                           // Implémenter la suppression de l'élément courant
                                           setState(() {
-                                            //item.removeAt(index); // surement utile pour l'affichage
+                                            deleteHistorique(item["index"]);
+                                            items.removeAt(index); // surement utile pour l'affichage
+                                            SharedPreferences.getInstance().then((value) => print(value.getString("Historique")));
                                             // mais nécessite aussi une suppression dans l'historique
                                           });
                                         },
@@ -260,6 +246,7 @@ class _HistoriquePageWidgetState extends State<HistoriquePageWidget> {
                                           // Passer en mode édition de l'élément courant
                                           setState(() {
                                             editingIndex = index;
+
                                             // TODO: historiser la modification du titre
                                           });
                                         },
@@ -289,11 +276,45 @@ class _HistoriquePageWidgetState extends State<HistoriquePageWidget> {
     );
   }
 
+  Future<void> modifyHistorique(int index, String title) async {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+
+    // Récupérer la liste existante sous forme de chaîne JSON
+    String? existingItemsJson = prefs.getString('historique');
+
+    List<Map<String, dynamic>> itemsList = List<Map<String, dynamic>>.from(jsonDecode(existingItemsJson!));
+    for(var element in itemsList) {
+      element.forEach((key, value) {
+        if(element["index"] == index) {
+          element['title'] = title;
+        }
+      });
+    }
+
+    String updatedItemsJson = jsonEncode(itemsList);
+    prefs.setString("historique", updatedItemsJson);
+  }
+
+  Future<void> deleteHistorique(int index) async {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    String? existingItemsJson = prefs.getString('historique');
+
+    List<Map<String, dynamic>> itemsList = List<Map<String, dynamic>>.from(jsonDecode(existingItemsJson!));
+    itemsList.removeWhere((element) => element['index'] == index);
+
+    int nextIndex = prefs.getInt("nextIndex")!;
+    nextIndex -= 1;
+
+    String updatedItemsJson = jsonEncode(itemsList);
+    prefs.setInt("nextIndex", nextIndex);
+    prefs.setString("historique", updatedItemsJson);
+  }
+
   Widget burgerButton() {
     return SpeedDial(
       icon: Icons.menu,
       activeIcon: Icons.close,
-      gradient: gradient_cashcash(),
+      gradient: gradientCashcash(),
       gradientBoxShape: BoxShape.circle,
       backgroundColor: Colors.transparent,
       foregroundColor: Colors.white,
@@ -311,7 +332,7 @@ class _HistoriquePageWidgetState extends State<HistoriquePageWidget> {
           label: 'Depuis la galerie',
           labelStyle: const TextStyle(fontSize: 18.0),
           onTap: () {
-            // TODO: rejoindre directement la galerie
+            YoloVideo(model: YoloModel()).openGallery();
           },
         ),
         SpeedDialChild(

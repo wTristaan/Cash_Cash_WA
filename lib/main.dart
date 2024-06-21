@@ -1,6 +1,5 @@
+import 'package:cash_cash/window/historique.dart';
 import 'package:flutter/material.dart';
-import 'window/camera.dart';
-import 'views/home.dart';
 
 final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 

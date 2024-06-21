@@ -14,8 +14,6 @@ import 'package:path_provider/path_provider.dart';
 import 'package:permission_handler/permission_handler.dart';
 
 import '../main.dart';
-import 'package:intl/intl.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
 import '../entities/yolo.dart';
 import '../window/image.dart';
@@ -97,7 +95,7 @@ class _MyAppState extends State<StartApp> {
       return YoloVideo(model: model);
     }
     if (option == Options.imagev8) {
-      final _YoloVideoState gal = new _YoloVideoState() ;
+      final _YoloVideoState gal = _YoloVideoState();
       gal._openGallery();
       //return YoloImageV8(model: model);
     }
@@ -235,10 +233,15 @@ class _YoloVideoState extends State<YoloVideo> {
   Widget build(BuildContext context) {
     final Size size = MediaQuery.of(context).size;
     if (!isLoaded) {
-      return const Scaffold(
-        body: Center(
-          child: Text("Model not loaded, waiting for it"),
-        ),
+      return Scaffold(
+        body: Stack(
+            children: [
+              _retourButtonWidget(),
+              const Center(
+                child: Text("Le model n'a pas été chargé, en attente..."),
+              ),
+            ]
+          ),
       );
     }
     return Scaffold(
@@ -572,132 +575,9 @@ class _YoloVideoState extends State<YoloVideo> {
   Future<void> stopDetection() async {
     setState(() {
       isDetecting = false;
-      historiser();
       yoloResults.clear();
       isBusy = false;
     });
-  }
-
-  // -----------------------------
-  // Historisation
-  // -----------------------------
-  Future<void> historiser() async {
-    List<String> results = [];
-    final DateTime now = DateTime.now();
-    final DateFormat formatter = DateFormat('yyyy-MM-dd H:mm');
-    final String date = formatter.format(now);
-    for(final yoloResult in yoloResults){
-      int  class_idx = yoloResult["class_idx"]; // je stoke la valeur de ma classe, exmple 8
-      String value_class = classes[class_idx] ;// je veux la valeur correspondant à ma class_idx, ici 5 euros
-      results.add(value_class);
-    }
-    var total;
-    String title_history_card = "${date} - ${total}";
-    String image_url = "";
-    Map<String, dynamic> head = {
-      "title": title_history_card,
-      "image_url": image_url
-    };
-    Map<String, dynamic> tail = calculateDetails(results);
-    Map<String, dynamic> historique = {};
-    historique.addAll(head);
-    historique.addAll(tail);
-
-    addNewItemToHistory(historique);
-  }
-
-  Future<void> addNewItemToHistory(Map<String, dynamic> newItem) async {
-    SharedPreferences prefs = await SharedPreferences.getInstance();
-
-    // Récupérer la liste existante sous forme de chaîne JSON
-    String? existingItemsJson = prefs.getString('historique');
-    List<Map<String, dynamic>> itemsList;
-
-    if (existingItemsJson != null) {
-      // Convertir la chaîne JSON en liste d'objets si elle existe déjà
-      itemsList = List<Map<String, dynamic>>.from(jsonDecode(existingItemsJson));
-    } else {
-      // Initialiser une nouvelle liste si aucune liste n'existe
-      itemsList = [];
-    }
-
-    // Ajouter le nouvel objet à la liste
-    itemsList.add(newItem);
-
-    // Convertir la liste mise à jour en chaîne JSON
-    String updatedItemsJson = jsonEncode(itemsList);
-
-    // Sauvegarder la liste mise à jour dans SharedPreferences
-    try {
-      await prefs.setString('historique', updatedItemsJson);
-    } on Exception catch (e) {
-      print("une erreur est survenu: $e");
-    }
-  }
-
-  Map<String, dynamic> calculateDetails(List<String> moneyList) {
-    double total = 0;
-    double totalPieces = 0;
-    int countPieces = 0;
-    double totalBillets = 0;
-    int countBillets = 0;
-    Map<String, Map<String, dynamic>> itemDetails = {};
-
-    // Définition des motifs pour identifier les pièces et les billets
-    final piecePatterns = RegExp(r'2 euros|1 euro|centimes');
-    final billetPatterns = RegExp(r'5 euros|10 euros|20 euros|50 euros|100 euros|200 euros|500 euros');
-    final autrePatterns = RegExp(r'Cheques|Tickets de caisse|tickets de caisse');
-
-    for (String money in moneyList) {
-      if(autrePatterns.hasMatch(money)) {
-        break;
-      }
-
-      // Extraire la valeur numérique
-      double value = double.parse(RegExp(r'\d+').firstMatch(money)!.group(0)!);
-      String euroValue = '$value€';
-
-      // Gestion spécifique des centimes
-      if (money.contains("centimes")) {
-        value /= 100;
-        euroValue = "${value.toStringAsFixed(2)}€";
-      }
-
-      // Ajout à la somme totale
-      total += value;
-
-      // Initialiser ou mettre à jour les détails de l'item
-      itemDetails[money] ??= {
-        'name': money,
-        'price': euroValue,
-        'somme': '0€',
-        'quantity': 0
-      };
-      itemDetails[money]?['quantity'] += 1;
-      double sum = double.parse(itemDetails[money]?['somme'].replaceAll('€', '')) + value;
-      itemDetails[money]?['somme'] = "${sum.toStringAsFixed(2)}€";
-
-      // Vérification si c'est une pièce
-      if (piecePatterns.hasMatch(money)) {
-        totalPieces += value;
-        countPieces++;
-      }
-
-      // Vérification si c'est un billet
-      if (billetPatterns.hasMatch(money)) {
-        totalBillets += value;
-        countBillets++;
-      }
-    }
-
-    return {
-      'total': '${total.toStringAsFixed(2)}€',
-      'nbr_piece': countPieces.toString(),
-      'total_piece': '${totalPieces.toStringAsFixed(2)}€',
-      'nbr_billet': countBillets.toString(),
-      'total_billet': '$totalBillets€',
-      'items': itemDetails.values.toList()
-    };
   }
 
   calculateFactoryX(Size screen){
