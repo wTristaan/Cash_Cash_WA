@@ -221,7 +221,6 @@ class _ImageViewerState extends State<ImageViewer> {
                             return ConfirmDialog(
                               imagePath: widget.imagePath,
                               onConfirm: () {
-                                Navigator.of(context).pop();
                                 Navigator.of(context).push(
                                   MaterialPageRoute(
                                     builder: (context) => ImageDetailsPage(imagePath: widget.imagePath, totalSum: 0.0, countDict: null),
@@ -235,8 +234,18 @@ class _ImageViewerState extends State<ImageViewer> {
                         var dataDict = await uploadImage(widget.imagePath);
                         var filePath = dataDict['file_path'];
                         var totalSum = dataDict['total_sum'].toDouble();
-                        var countDict = dataDict['count'];
-                        if(dataDict != null && !isHisto) {
+                        Map<String, dynamic> countDict = dataDict['count'];
+                        bool truc = false;
+                        double somme = 0.0;
+                        for(var count in countDict.entries) {
+                          somme += count.value;
+                        }
+                        if(somme > 0.0) {
+                          print("somme = $somme");
+                          truc = true;
+                        }
+
+                        if(truc && !isHisto) {
                           await historiser(dataDict);
                           isHisto = true;
                         }

@@ -4,6 +4,7 @@ import 'dart:io';
 import 'dart:isolate';
 
 import 'package:camera/camera.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_speed_dial/flutter_speed_dial.dart';
@@ -16,8 +17,9 @@ import 'package:permission_handler/permission_handler.dart';
 import '../main.dart';
 
 import '../entities/yolo.dart';
+import '../window/historique.dart';
 import '../window/image.dart';
-
+import 'dart:ui' as ui;
 
 enum Options { none, imagev8, frame }
 late List<CameraDescription> cameras;
@@ -185,6 +187,28 @@ class _YoloVideoState extends State<YoloVideo> {
     "Tickets de caisse",
     "tickets de caisse"
   ];
+
+  List<double> classesDouble = [
+    0.01,
+    0.02,
+    0.05,
+    0.10,
+    0.20,
+    0.50,
+    1.0,
+    2.0,
+    5.0,
+    10.0,
+    20.0,
+    50.0,
+    100.0,
+    200.0,
+    500.0,
+    0.0,
+    0.0,
+    0.0
+  ];
+  double somme = 0.0;
   String cachePath = "";
 
   @override
@@ -252,10 +276,9 @@ class _YoloVideoState extends State<YoloVideo> {
             aspectRatio: controller.value.aspectRatio,
             child: CameraPreview(controller),
           ),
-          ...displayBoxesAroundRecognizedObjects(size),
           Positioned(
-            top: 60,
-            right: 138,
+            top: 105,
+            left: -158,
             width: MediaQuery.of(context).size.width,
             child: Container(
               height: 45,
@@ -284,22 +307,47 @@ class _YoloVideoState extends State<YoloVideo> {
           // bottom: 0,
           Positioned.fill(
             child: Stack(
-            children: [
-              _retourButtonWidget(),
-              if (camsPermissionIsGranted && isCams) ...[
-                _cameraIconWidget(),    // L'icône de l'appareil photo
-                _flashIconWidget(),     // L'icône du flash
-              ]
-              else if (!camsPermissionIsGranted && !isCams) ...[
-                _cameraIconWidget(),    // L'icône de l'appareil photo
-              ]
-              else ...[
-                  const Center(
-                    child: CircularProgressIndicator(),
+              children: [
+                _retourButtonWidget(),
+                if (camsPermissionIsGranted && isCams) ...[
+                  _cameraIconWidget(),    // L'icône de l'appareil photo
+                  _flashIconWidget(),     // L'icône du flash
+                ]
+                else if (!camsPermissionIsGranted && !isCams) ...[
+                  _cameraIconWidget(),    // L'icône de l'appareil photo
+                ]
+                else ...[
+                    const Center(
+                      child: CircularProgressIndicator(),
+                    ),
+                  ],
+                if(isDetecting) ...[
+                  Positioned(
+                    top: 40,
+                    right: 15,
+                    child:Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 4.0),
+                      decoration: BoxDecoration(
+                      gradient: const LinearGradient(
+                      colors: [Color(0xFF4B39EF), Color(0xFFD6587F)], // Définir les couleurs du gradient
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    ),
+                        borderRadius: BorderRadius.circular(20), // Bord arrondi pour un effet plus doux
+                      ),
+                      child: Text(
+                        "${somme.toStringAsFixed(2)} €", // Remplacez par votre variable ou texte
+                        style: const TextStyle(
+                          fontSize: 15.0,
+                          color: Colors.white, // Texte en couleur blanche
+                        ),
+                      ),
+                    )
                   ),
+                  ...displayBoxesAroundRecognizedObjects(size)
                 ],
               ],
-            ),
+            )
           ),
         ],
       ),
@@ -316,7 +364,11 @@ class _YoloVideoState extends State<YoloVideo> {
               left: 0,
               child: IconButton(
                 onPressed: () {
-                  Navigator.pop(context);
+                  Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (context) => const HistoriquePageWidget()
+                    ),
+                  );
                 },
                 icon: const Icon(
                 Icons.arrow_back,
@@ -339,8 +391,8 @@ class _YoloVideoState extends State<YoloVideo> {
 
   Widget _flashIconWidget() {
     return Positioned(
-      top: 32,
-      left: 30.0,
+      top: 75,
+      left: 10,
       child: GestureDetector(
         onTap: _toggleFlash,
         child: Icon(
@@ -573,9 +625,10 @@ class _YoloVideoState extends State<YoloVideo> {
   }
 
   Future<void> stopDetection() async {
+    yoloResults.clear();
+    print("yolo $yoloResults");
     setState(() {
       isDetecting = false;
-      yoloResults.clear();
       isBusy = false;
     });
   }
@@ -597,11 +650,16 @@ class _YoloVideoState extends State<YoloVideo> {
   }
 
   List<Widget> displayBoxesAroundRecognizedObjects(Size screen) {
-    if (yoloResults.isEmpty) return [];
+    if (yoloResults.isEmpty){
+      somme = 0.0;
+      return [];
+    };
     factorX = calculateFactoryX(screen);
     factorY = calculateFactoryY(screen);
+    somme = 0.0;
 
     return yoloResults.map((result) {
+      somme += classesDouble[result['class_idx']];
       return Positioned(
         left: result["bbox"][0] * factorX,
         top: result["bbox"][1] * factorY,

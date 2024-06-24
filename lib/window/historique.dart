@@ -103,7 +103,7 @@ class _HistoriquePageWidgetState extends State<HistoriquePageWidget> {
               ),
             ),
           ),
-          automaticallyImplyLeading: true,
+          automaticallyImplyLeading: false,
           title: const Text(
             'Historique',
             style: TextStyle(
