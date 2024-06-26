@@ -4,6 +4,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'dart:io';
 import 'package:http/http.dart' as http;
+import 'package:intl/intl.dart';
 import 'package:mime/mime.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../main.dart';
@@ -11,8 +12,10 @@ import '../utils/dialog.dart';
 import 'package:http_parser/http_parser.dart';
 import 'package:fluttertoast/fluttertoast.dart';
 
+import 'historique.dart';
+
 dynamic uploadImage(String imagePath) async {
-  var uri = Uri.parse('http://149.202.49.224:8000/uploadfile/');
+  var uri = Uri.parse('http://149.202.49.224:8001/uploadfile/');
   var request = http.MultipartRequest('POST', uri);
 
   var mimeType = lookupMimeType(imagePath);
@@ -85,6 +88,7 @@ class ImageViewer extends StatefulWidget {
 
 class _ImageViewerState extends State<ImageViewer> {
   bool isUploading = false;
+  bool isHisto = false;
 
   Future<ImageInfo> _loadImage(String imagePath) async {
     final Completer<ImageInfo> completer = Completer();
@@ -96,7 +100,7 @@ class _ImageViewerState extends State<ImageViewer> {
     return completer.future;
   }
 
-  dynamic uploadImage(String imagePath) async {
+  /*dynamic uploadImagept(String imagePath) async {
     setState(() {
       isUploading = true;
     });
@@ -163,7 +167,7 @@ class _ImageViewerState extends State<ImageViewer> {
           textColor: Colors.white,
           fontSize: 16.0);
     }
-  }
+  }*/
 
   @override
   Widget build(BuildContext context) {
@@ -181,6 +185,8 @@ class _ImageViewerState extends State<ImageViewer> {
               child: Text('Erreur de chargement de l\'image'),
             );
           } else {
+            isHisto = false;
+
             return Stack(
               children: [
                 Center(
@@ -195,6 +201,7 @@ class _ImageViewerState extends State<ImageViewer> {
                   child: ElevatedButton(
                     onPressed: () {
                       Navigator.of(context).pop();
+                      isHisto = false;
                     },
                     child: const Text('Reprendre'),
                   ),
@@ -214,7 +221,6 @@ class _ImageViewerState extends State<ImageViewer> {
                             return ConfirmDialog(
                               imagePath: widget.imagePath,
                               onConfirm: () {
-                                Navigator.of(context).pop();
                                 Navigator.of(context).push(
                                   MaterialPageRoute(
                                     builder: (context) => ImageDetailsPage(imagePath: widget.imagePath, totalSum: 0.0, countDict: null),
@@ -228,7 +234,20 @@ class _ImageViewerState extends State<ImageViewer> {
                         var dataDict = await uploadImage(widget.imagePath);
                         var filePath = dataDict['file_path'];
                         var totalSum = dataDict['total_sum'].toDouble();
-                        var countDict = dataDict['count'];
+                        Map<String, dynamic> countDict = dataDict['count'];
+                        bool truc = false;
+                        double somme = 0.0;
+                        for(var count in countDict.entries) {
+                          somme += count.value;
+                        }
+                        if(somme > 0.0) {
+                          truc = true;
+                        }
+
+                        if(truc && !isHisto) {
+                          await historiser(dataDict);
+                          isHisto = true;
+                        }
                         Navigator.of(context).push(
                           MaterialPageRoute(
                             builder: (context) => ImageDetailsPage(imagePath: filePath, totalSum: totalSum, countDict: countDict),
@@ -247,6 +266,114 @@ class _ImageViewerState extends State<ImageViewer> {
     );
   }
 }
+
+// -----------------------------
+// Historisation
+// -----------------------------
+Future<void> historiser(Map<String, dynamic> dataHistorique) async {
+  SharedPreferences prefs = await SharedPreferences.getInstance();
+
+  if(prefs.containsKey("nextIndex")) {
+    int prefsKey = prefs.getInt("nextIndex")!;
+    prefsKey += 1;
+    prefs.setInt("nextIndex", prefsKey);
+  } else {
+    prefs.setInt("nextIndex", 1);
+  }
+
+  int nextIndex = prefs.getInt("nextIndex")!;
+
+  final DateTime now = DateTime.now();
+  final DateFormat formatter = DateFormat('yyyy-MM-dd H:mm');
+  final String date = formatter.format(now);
+  String titleHistoryCard = date;
+
+  Map<String, dynamic> head = {
+    "index": nextIndex,
+    "title": titleHistoryCard,
+    "image_url": dataHistorique['file_path']
+  };
+  Map<String, dynamic> tail = calculateDetails(dataHistorique);
+  Map<String, dynamic> historique = {};
+  historique.addAll(head);
+  historique.addAll(tail);
+
+  addNewItemToHistory(historique);
+}
+
+Future<void> addNewItemToHistory(Map<String, dynamic> newItem) async {
+  SharedPreferences prefs = await SharedPreferences.getInstance();
+
+  // Récupérer la liste existante sous forme de chaîne JSON
+  String? existingItemsJson = prefs.getString('historique');
+  List<Map<String, dynamic>> itemsList;
+
+  if (existingItemsJson != null) {
+    // Convertir la chaîne JSON en liste d'objets si elle existe déjà
+    itemsList = List<Map<String, dynamic>>.from(jsonDecode(existingItemsJson));
+  } else {
+    // Initialiser une nouvelle liste si aucune liste n'existe
+    itemsList = [];
+  }
+
+  // Ajouter le nouvel objet à la liste
+  itemsList.add(newItem);
+
+  // Convertir la liste mise à jour en chaîne JSON
+  String updatedItemsJson = jsonEncode(itemsList);
+
+  // Sauvegarder la liste mise à jour dans SharedPreferences
+  try {
+    await prefs.setString('historique', updatedItemsJson);
+  } on Exception catch (e) {
+    print("une erreur est survenu: $e");
+  }
+}
+
+Map<String, dynamic> calculateDetails(Map<String, dynamic> data) {
+  // Extraire les totaux et les comptes généraux
+  double totalSum = data['total_sum'];
+  int countPieces = data['count']['count_pieces'];
+  int countBillets = data['count']['count_billets'];
+  double sumPieces = data['count']['sum_pieces'];
+  double sumBillets = data['count']['sum_billets'];
+
+  // Détail des articles
+  List<Map<String, dynamic>> itemDetails = [];
+
+  // Unité de prix pour chaque type de monnaie
+  Map<String, double> unitPrices = {
+    '1 centime': 0.01, '2 centimes': 0.02, '5 centimes': 0.05, '10 centimes': 0.10,
+    '20 centimes': 0.20, '50 centimes': 0.50, '1 euro': 1.00, '2 euros': 2.00,
+    '5 euros': 5.00, '10 euros': 10.00, '20 euros': 20.00, '50 euros': 50.00,
+    '100 euros': 100.00, '200 euros': 200.00, '500 euros': 500.00
+  };
+
+  // Calculer les détails pour chaque type de monnaie
+  data['count'].forEach((key, value) {
+    if (value > 0 && unitPrices.containsKey(key)) {
+      double unitPrice = unitPrices[key]!;
+      double sum = unitPrice * value;
+      itemDetails.add({
+        'name': key,
+        'price': '${unitPrice.toStringAsFixed(2)}€',
+        'quantity': value,
+        'somme': '${sum.toStringAsFixed(2)}€'
+      });
+    }
+  });
+
+  // Retourner le résultat formaté
+  return {
+    'total': '${totalSum.toStringAsFixed(2)}€',
+    'nbr_pieces': countPieces.toString(),
+    'total_pieces': '${sumPieces.toStringAsFixed(2)}€',
+    'nbr_billets': countBillets.toString(),
+    'total_billets': '${sumBillets.toStringAsFixed(2)}€',
+    'items': itemDetails
+  };
+}
+
 
 class ImageDetailsPage extends StatefulWidget {
   final String imagePath;
@@ -287,6 +414,33 @@ class _ImageDetailsPageState extends State<ImageDetailsPage> with SingleTickerPr
     sheetIsExpanded = !sheetIsExpanded;
   }
 
+  Widget _retourButtonWidget() {
+    return SafeArea(
+        top: true,
+        child: Stack(
+            children: [
+              Positioned(
+                top: 0,
+                left: 0,
+                child: IconButton(
+                  onPressed: () {
+                    navigatorKey.currentState?.push(
+                      MaterialPageRoute(
+                        builder: (context) => const HistoriquePageWidget()
+                      ),
+                    );
+                  },
+                  icon: const Icon(
+                    Icons.arrow_back,
+                    color: Colors.white,
+                    size: 30.0,
+                  ),
+                ),
+              ),
+            ])
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -298,7 +452,7 @@ class _ImageDetailsPageState extends State<ImageDetailsPage> with SingleTickerPr
               child: RotatedBox(
                 quarterTurns: 1, // Ajustez le nombre de quart de tours pour obtenir l'orientation souhaitée
                 child: Image.network(
-                  "http://149.202.49.224:8000/${widget.imagePath}",
+                  "http://149.202.49.224:8001/${widget.imagePath}",
                   fit: BoxFit.contain,
                   loadingBuilder: (BuildContext context, Widget child, ImageChunkEvent? loadingProgress) {
                     if (loadingProgress == null) return child;
@@ -317,6 +471,7 @@ class _ImageDetailsPageState extends State<ImageDetailsPage> with SingleTickerPr
               ),
             ),
           ),
+          _retourButtonWidget(),
           Positioned.fill(
             child: DraggableScrollableSheet(
               controller: controller,
@@ -346,7 +501,7 @@ class _ImageDetailsPageState extends State<ImageDetailsPage> with SingleTickerPr
                           ListTile(
                             leading: Icon(Icons.attach_money),
                             title: Text('Total'),
-                            subtitle: Text("Somme: ${widget.totalSum}€"),
+                            subtitle: Text("Somme: ${widget.totalSum.toStringAsFixed(2)}€"),
                           ),
                           ListTile(
                             leading: Icon(Icons.money_off),

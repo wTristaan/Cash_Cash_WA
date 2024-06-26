@@ -1,6 +1,5 @@
+import 'package:cash_cash/window/historique.dart';
 import 'package:flutter/material.dart';
-import 'window/camera.dart';
-import 'views/home.dart';
 
 final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 
@@ -20,7 +19,8 @@ class LunchApp extends StatelessWidget {
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
         useMaterial3: true,
       ),
-      home: const StartApp(),
+      debugShowCheckedModeBanner: false,
+      home: const HistoriquePageWidget(),
     );
   }
 }

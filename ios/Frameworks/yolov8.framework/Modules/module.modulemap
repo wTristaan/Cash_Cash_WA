@@ -1,0 +1,6 @@
+framework module yolov8 {
+  umbrella header "yolov8.h"
+  export *
+
+  module * { export * }
+}
