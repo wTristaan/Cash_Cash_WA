@@ -503,7 +503,7 @@ class _ImageDetailsPageState extends State<ImageDetailsPage> with SingleTickerPr
                           ListTile(
                             leading: Icon(Icons.attach_money),
                             title: Text('Total'),
-                            subtitle: Text("Somme: ${widget.totalSum}€"),
+                            subtitle: Text("Somme: ${widget.totalSum.toStringAsFixed(2)}€"),
                           ),
                           ListTile(
                             leading: Icon(Icons.money_off),
