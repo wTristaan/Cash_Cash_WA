@@ -287,7 +287,6 @@ class _YoloVideoState extends State<YoloVideo> {
                 onPressed: () async {
                   if (isDetecting) {
                     stopDetection();
-                    print("Detecteds: ${yoloResults.length}");
                   } else {
                     startDetection();
                   }
@@ -592,7 +591,6 @@ class _YoloVideoState extends State<YoloVideo> {
             List<dynamic> jsonData = jsonDecode(message);
             List<Map<String, dynamic>> finalJsonResult = jsonData.map((item) => Map<String, dynamic>.from(item)).toList();
             result = finalJsonResult;
-            print("result ${result}");
           }catch(e){
             receivePort.close();
           }
@@ -626,7 +624,6 @@ class _YoloVideoState extends State<YoloVideo> {
 
   Future<void> stopDetection() async {
     yoloResults.clear();
-    print("yolo $yoloResults");
     setState(() {
       isDetecting = false;
       isBusy = false;

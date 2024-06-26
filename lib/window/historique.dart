@@ -31,8 +31,6 @@ class _HistoriquePageWidgetState extends State<HistoriquePageWidget> {
       setState(() {
         items = List<Map<String, dynamic>>.from(jsonDecode(prefs.getString("historique")!));
       });
-
-      print("items $items");
     } else {
       setState(() {
         items = [];
@@ -229,9 +227,8 @@ class _HistoriquePageWidgetState extends State<HistoriquePageWidget> {
                                           // Implémenter la suppression de l'élément courant
                                           setState(() {
                                             deleteHistorique(item["index"]);
-                                            items.removeAt(index); // surement utile pour l'affichage
+                                            items.removeAt(index);
                                             SharedPreferences.getInstance().then((value) => print(value.getString("Historique")));
-                                            // mais nécessite aussi une suppression dans l'historique
                                           });
                                         },
                                         icon: const Icon(Icons.delete),
@@ -246,8 +243,6 @@ class _HistoriquePageWidgetState extends State<HistoriquePageWidget> {
                                           // Passer en mode édition de l'élément courant
                                           setState(() {
                                             editingIndex = index;
-
-                                            // TODO: historiser la modification du titre
                                           });
                                         },
                                         icon: const Icon(Icons.edit),

@@ -241,7 +241,6 @@ class _ImageViewerState extends State<ImageViewer> {
                           somme += count.value;
                         }
                         if(somme > 0.0) {
-                          print("somme = $somme");
                           truc = true;
                         }
 
@@ -326,7 +325,6 @@ Future<void> addNewItemToHistory(Map<String, dynamic> newItem) async {
   // Sauvegarder la liste mise à jour dans SharedPreferences
   try {
     await prefs.setString('historique', updatedItemsJson);
-    print("passe dans setString historique");
   } on Exception catch (e) {
     print("une erreur est survenu: $e");
   }
