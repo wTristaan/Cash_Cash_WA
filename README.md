@@ -44,3 +44,8 @@ Si vous souhaitez contribuer au projet, veuillez consulter nos [directives de co
 ## Licence
 
 Ce projet est sous licence [MIT](lien_vers_la_licence.md).
+
+## Resultat
+<video width="500" height="1000" controls>
+  <source src="result.mp4" type="video/mp4">
+</video>
